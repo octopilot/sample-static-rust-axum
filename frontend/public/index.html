@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Greet — static + Go</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; padding: 0 1rem; }
+    label, input { display: block; margin-bottom: 0.5rem; }
+    input { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+    button { margin-top: 0.5rem; padding: 0.5rem 1rem; }
+    #result { margin-top: 1rem; padding: 1rem; background: #f0f0f0; border-radius: 4px; white-space: pre-wrap; }
+    .error { color: #c00; }
+  </style>
+</head>
+<body>
+  <h1>Greet</h1>
+  <p>Static frontend + Go API — one repo.</p>
+  <form id="form">
+    <label for="name">Name</label>
+    <input id="name" name="name" required placeholder="Alice">
+    <label for="birth_year">Birth year</label>
+    <input id="birth_year" name="birth_year" type="number" required placeholder="1990">
+    <label for="apiBase">API base URL (optional)</label>
+    <input id="apiBase" name="apiBase" placeholder="/api or http://localhost:8081">
+    <button type="submit">Greet</button>
+  </form>
+  <div id="result"></div>
+  <script>
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const birth_year = document.getElementById('birth_year').value.trim();
+      const apiBase = (document.getElementById('apiBase').value.trim() || '').replace(/\/$/, '');
+      const url = apiBase + '/greet?name=' + encodeURIComponent(name) + '&birth_year=' + encodeURIComponent(birth_year);
+      const out = document.getElementById('result');
+      out.className = '';
+      out.textContent = 'Loading…';
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        out.textContent = res.ok ? JSON.stringify(data, null, 2) : 'Error: ' + (data.error || res.status);
+        if (!res.ok) out.classList.add('error');
+      } catch (err) {
+        out.textContent = 'Error: ' + err.message;
+        out.classList.add('error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+apiVersion: skaffold/v2beta29
+kind: Config
+metadata:
+  name: sample-static-rust-axum
+build:
+  local: {}
+  artifacts:
+    - image: sample-static-rust-axum-frontend
+      context: frontend
+      buildpacks:
+        builder: paketobuildpacks/builder-jammy-base
+    - image: sample-static-rust-axum-api
+      context: api
+      docker:
+        dockerfile: Dockerfile
+deploy: {}
