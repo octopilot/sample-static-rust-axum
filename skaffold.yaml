@@ -8,7 +8,7 @@ build:
     - image: sample-static-rust-axum-frontend
       context: frontend
       buildpacks:
-        builder: paketobuildpacks/builder-jammy-base
+        builder: octopilot/builder-jammy-base:0.1.198
     - image: sample-static-rust-axum-api
       context: api
       docker:
