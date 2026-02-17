@@ -48,7 +48,7 @@ jobs:
         uses: octopilot/octopilot-workflows/.github/workflows/test.yml@main
         with:
             language: ${{ matrix.language }}
-            version: ${{ matrix.version }}
+            version: ${{ matrix.version != '' && matrix.version || 'stable' }}
             context: ${{ matrix.context }}
 
     build-ephemeral:
