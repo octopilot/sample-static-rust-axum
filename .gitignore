@@ -24,7 +24,7 @@ dist/
 *.tsbuildinfo
 
 # Go
-/api
+
 *.exe
 *.exe~
 *.dll
