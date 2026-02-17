@@ -13,6 +13,11 @@ jobs:
         outputs:
             matrix: ${{ steps.detect.outputs.matrix }}
             languages: ${{ steps.detect.outputs.languages }}
+            go-version: ${{ steps.detect.outputs.go-version }}
+            rust-version: ${{ steps.detect.outputs.rust-version }}
+            node-version: ${{ steps.detect.outputs.node-version }}
+            python-version: ${{ steps.detect.outputs.python-version }}
+            java-version: ${{ steps.detect.outputs.java-version }}
         steps:
             - uses: actions/checkout@v4
             - name: Detect Contexts
@@ -25,6 +30,11 @@ jobs:
         uses: octopilot/octopilot-workflows/.github/workflows/lint.yml@main
         with:
             languages: ${{ needs.detect.outputs.languages }}
+            go-version: ${{ needs.detect.outputs.go-version }}
+            rust-version: ${{ needs.detect.outputs.rust-version }}
+            node-version: ${{ needs.detect.outputs.node-version }}
+            python-version: ${{ needs.detect.outputs.python-version }}
+            java-version: ${{ needs.detect.outputs.java-version }}
 
     test:
         needs: detect
@@ -35,6 +45,7 @@ jobs:
         uses: octopilot/octopilot-workflows/.github/workflows/test.yml@main
         with:
             language: ${{ matrix.language }}
+            version: ${{ matrix.version }}
             # context: ${{ matrix.context }} # TODO: Pass context to test workflow if needed (requires update to test.yml path handling)
 
     build-ephemeral:
