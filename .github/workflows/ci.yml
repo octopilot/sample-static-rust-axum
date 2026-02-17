@@ -8,17 +8,40 @@ on:
     workflow_dispatch:
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            packages: write
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      languages: ${{ steps.detect.outputs.languages }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Contexts
+        id: detect
+        uses: octopilot/octopilot-actions/detect-contexts@main
 
-            - name: Build with Octopilot
-              uses: octopilot/actions/octopilot@main
-              with:
-                  command: build
-                  args: --platform linux/amd64
+  lint:
+    needs: detect
+    if: needs.detect.outputs.languages != ''
+    uses: octopilot/octopilot-workflows/.github/workflows/lint.yml@main
+    with:
+      languages: ${{ needs.detect.outputs.languages }}
+
+  test:
+    needs: detect
+    if: needs.detect.outputs.matrix != '[]'
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.detect.outputs.matrix) }}
+    uses: octopilot/octopilot-workflows/.github/workflows/test.yml@main
+    with:
+      language: ${{ matrix.language }}
+      # context: ${{ matrix.context }} # TODO: Pass context to test workflow if needed (requires update to test.yml path handling)
+
+  build-ephemeral:
+    needs: [detect, lint, test]
+    uses: octopilot/octopilot-workflows/.github/workflows/build-ephemeral.yml@main
+    with:
+      ttl: "2h"
+      # We could matrix this too if we wanted separate images per artifact, but build-ephemeral builds everything by default via `op build`.
+      # Actually `op build` builds everything in skaffold.yaml.
