@@ -46,7 +46,7 @@ jobs:
         with:
             language: ${{ matrix.language }}
             version: ${{ matrix.version }}
-            # context: ${{ matrix.context }} # TODO: Pass context to test workflow if needed (requires update to test.yml path handling)
+            context: ${{ matrix.context }}
 
     build-ephemeral:
         needs: [detect, lint, test]
