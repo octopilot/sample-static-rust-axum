@@ -1,60 +1,91 @@
 name: CI
 
 on:
-    push:
-        branches: ["main"]
-    pull_request:
-        branches: ["main"]
-    workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-    detect:
-        runs-on: ubuntu-latest
-        outputs:
-            matrix: ${{ steps.detect.outputs.matrix }}
-            languages: ${{ steps.detect.outputs.languages }}
-            go-version: ${{ steps.detect.outputs.go-version }}
-            rust-version: ${{ steps.detect.outputs.rust-version }}
-            node-version: ${{ steps.detect.outputs.node-version }}
-            python-version: ${{ steps.detect.outputs.python-version }}
-            java-version: ${{ steps.detect.outputs.java-version }}
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
+  # ── 1. Auto-detect languages and versions from skaffold.yaml ───────────────
+  detect:
+    name: Detect Contexts
+    runs-on: ubuntu-latest
+    outputs:
+      pipeline-context: ${{ steps.detect.outputs.pipeline-context }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Contexts
+        id: detect
+        uses: octopilot/actions/detect-contexts@main
 
-            - name: Detect Contexts
-              id: detect
-              uses: octopilot/actions/detect-contexts@main
-
-    lint:
-        needs: detect
-        if: needs.detect.outputs.languages != ''
-        uses: octopilot/octopilot-workflows/.github/workflows/lint.yml@main
+  # ── 2. Lint (pre-commit, language-aware) ───────────────────────────────────
+  lint:
+    needs: detect
+    if: toJSON(fromJson(needs.detect.outputs.pipeline-context).languages) != '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: octopilot/actions/lint@main
         with:
-            languages: ${{ needs.detect.outputs.languages }}
-            go-version: ${{ needs.detect.outputs.go-version }}
-            rust-version: ${{ needs.detect.outputs.rust-version }}
-            node-version: ${{ needs.detect.outputs.node-version }}
-            python-version: ${{ needs.detect.outputs.python-version }}
-            java-version: ${{ needs.detect.outputs.java-version }}
+          pipeline-context: ${{ needs.detect.outputs.pipeline-context }}
 
-    test:
-        needs: detect
-        if: needs.detect.outputs.matrix != '[]'
-        strategy:
-            matrix:
-                include: ${{ fromJson(needs.detect.outputs.matrix) }}
-        uses: octopilot/octopilot-workflows/.github/workflows/test.yml@main
+  # ── 3. Test (matrix per detected language context) ─────────────────────────
+  test:
+    needs: detect
+    if: toJSON(fromJson(needs.detect.outputs.pipeline-context).matrix) != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.detect.outputs.pipeline-context).matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: octopilot/actions/test@main
         with:
-            language: ${{ matrix.language }}
-            version: ${{ matrix.version != '' && matrix.version || 'stable' }}
-            context: ${{ matrix.context }}
+          pipeline-context: ${{ toJson(matrix) }}
 
-    build-ephemeral:
-        needs: [detect, lint, test]
-        uses: octopilot/octopilot-workflows/.github/workflows/build-ephemeral.yml@main
+  # ── 4. Build and push container image ──────────────────────────────────────
+  # Runs on push to main and on tags; skipped for pull requests to avoid
+  # writing to the registry on every PR.
+  build:
+    name: Build and Push
+    needs: [lint, test]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-            ttl: "2h"
-            # We could matrix this too if we wanted separate images per artifact, but build-ephemeral builds everything by default via `op build`.
-            # Actually `op build` builds everything in skaffold.yaml.
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        id: push
+        uses: octopilot/actions/octopilot@main
+        with:
+          version: ${{ github.ref_name }}
+          registry: ghcr.io/${{ github.repository_owner }}
+          platforms: linux/amd64,linux/arm64
+
+      # Attest the application image digest on tagged releases only.
+      # The octopilot action outputs the last artifact's digest (the api image).
+      - name: Attest Build Provenance
+        if: startsWith(github.ref, 'refs/tags/v') && steps.push.outputs.digest != ''
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/sample-static-rust-axum-api
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

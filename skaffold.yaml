@@ -1,9 +1,8 @@
-apiVersion: skaffold/v2beta29
+apiVersion: skaffold/v4beta1
 kind: Config
 metadata:
   name: sample-static-rust-axum
 build:
-  local: {}
   artifacts:
     - image: sample-static-rust-axum-frontend
       context: frontend
@@ -13,4 +12,3 @@ build:
       context: api
       buildpacks:
         builder: ghcr.io/octopilot/builder-jammy-base:0.1.198
-deploy: {}
