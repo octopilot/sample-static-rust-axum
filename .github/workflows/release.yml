@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    uses: octopilot/octopilot-workflows/.github/workflows/workflow-release.yml@main
+    with:
+      mode: rust
+      bump: ${{ inputs.bump }}
+      # Cargo.toml lives under api/ in this repo
+      file: api/Cargo.toml
+    secrets:
+      repo_token: ${{ secrets.RELEASE_TOKEN }}
