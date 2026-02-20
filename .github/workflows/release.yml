@@ -22,4 +22,7 @@ jobs:
       # Cargo.toml lives under api/ in this repo
       file: api/Cargo.toml
     secrets:
-      repo_token: ${{ secrets.RELEASE_TOKEN }}
+      # REPO_PAT is a Personal Access Token with `contents:write` configured
+      # at the octopilot org level. It is required because GITHUB_TOKEN cannot
+      # push commits back to the repo in a way that triggers downstream CI.
+      repo_token: ${{ secrets.REPO_PAT }}
