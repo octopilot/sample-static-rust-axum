@@ -1,14 +1,9 @@
 //! Axum hello-world for OctoPilot samples.
 //! GET /greet?name=...&birth_year=... returns greeting and age confirmation.
 
-use axum::{
-    extract::Query,
-    response::Json,
-    routing::get,
-    Router,
-};
-use serde::{Deserialize, Serialize};
+use axum::{extract::Query, response::Json, routing::get, Router};
 use chrono::{Datelike, Utc};
+use serde::{Deserialize, Serialize};
 use tower_http::cors::CorsLayer;
 
 #[derive(Debug, Deserialize)]
